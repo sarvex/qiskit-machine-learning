@@ -119,8 +119,7 @@ class TestSamplerQNN(QiskitMachineLearningTestCase):
             interpret = self.interpret_2d
             output_shape = self.output_shape_2d
 
-        # construct QNN
-        qnn = SamplerQNN(
+        return SamplerQNN(
             sampler=sampler,
             circuit=self.qc,
             input_params=input_params,
@@ -130,7 +129,6 @@ class TestSamplerQNN(QiskitMachineLearningTestCase):
             output_shape=output_shape,
             input_gradients=input_grads,
         )
-        return qnn
 
     def _verify_qnn(
         self,
@@ -155,33 +153,20 @@ class TestSamplerQNN(QiskitMachineLearningTestCase):
         # evaluate QNN backward pass
         input_grad, weights_grad = qnn.backward(input_data, weights)
 
-        if qnn.input_gradients:
-            if input_data is not None:
-                self.assertEqual(input_grad.shape, (batch_size, *qnn.output_shape, qnn.num_inputs))
-                self.assertTrue(isinstance(input_grad, self.array_type[qnn.sparse]))
-            else:
-                # verify that input gradients are None if turned off
-                self.assertIsNone(input_grad)
-            if weights is not None:
-                self.assertEqual(
-                    weights_grad.shape, (batch_size, *qnn.output_shape, qnn.num_weights)
-                )
-                self.assertTrue(isinstance(weights_grad, self.array_type[qnn.sparse]))
-            else:
-                # verify that weight gradients are None if no weights
-                self.assertIsNone(weights_grad)
-
+        if qnn.input_gradients and input_data is not None:
+            self.assertEqual(input_grad.shape, (batch_size, *qnn.output_shape, qnn.num_inputs))
+            self.assertTrue(isinstance(input_grad, self.array_type[qnn.sparse]))
         else:
             # verify that input gradients are None if turned off
             self.assertIsNone(input_grad)
-            if weights is not None:
-                self.assertEqual(
-                    weights_grad.shape, (batch_size, *qnn.output_shape, qnn.num_weights)
-                )
-                self.assertTrue(isinstance(weights_grad, self.array_type[qnn.sparse]))
-            else:
-                # verify that weight gradients are None if no weights
-                self.assertIsNone(weights_grad)
+        if weights is not None:
+            self.assertEqual(
+                weights_grad.shape, (batch_size, *qnn.output_shape, qnn.num_weights)
+            )
+            self.assertTrue(isinstance(weights_grad, self.array_type[qnn.sparse]))
+        else:
+            # verify that weight gradients are None if no weights
+            self.assertIsNone(weights_grad)
 
     @unittest.skipIf(not _optionals.HAS_SPARSE, "Sparse not available.")
     @idata(itertools.product(SPARSE, SAMPLERS, INTERPRET_TYPES, BATCH_SIZES, INPUT_GRADS))

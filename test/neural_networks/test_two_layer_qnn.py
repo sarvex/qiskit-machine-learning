@@ -76,10 +76,7 @@ class TestTwoLayerQNN(QiskitMachineLearningTestCase):
         input_data = np.zeros(self.qnn.num_inputs)
         weights = np.zeros(self.qnn.num_weights)
 
-        if qnn_type == "qi":
-            qnn = self.qnn
-        else:
-            qnn = self.qnn_no_qi
+        qnn = self.qnn if qnn_type == "qi" else self.qnn_no_qi
         qnn.input_gradients = input_grad_required
 
         # test forward pass
@@ -113,10 +110,7 @@ class TestTwoLayerQNN(QiskitMachineLearningTestCase):
         )
         weights = np.zeros(self.qnn.num_weights)
 
-        if qnn_type == "qi":
-            qnn = self.qnn
-        else:
-            qnn = self.qnn_no_qi
+        qnn = self.qnn if qnn_type == "qi" else self.qnn_no_qi
         qnn.input_gradients = input_grad_required
 
         # test forward pass

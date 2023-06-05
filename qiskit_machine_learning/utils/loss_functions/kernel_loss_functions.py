@@ -121,7 +121,6 @@ class SVCLoss(KernelLoss):
         # Prune kernel matrix of non-support-vector entries
         kmatrix = kmatrix[support_vecs, :][:, support_vecs]
 
-        # Calculate loss
-        loss = np.sum(np.abs(dual_coefs)) - (0.5 * (dual_coefs.T @ kmatrix @ dual_coefs))
-
-        return loss
+        return np.sum(np.abs(dual_coefs)) - (
+            0.5 * (dual_coefs.T @ kmatrix @ dual_coefs)
+        )

@@ -225,10 +225,10 @@ class TestStatevectorKernel(QiskitMachineLearningTestCase):
 
     def _get_symmetric_solution(self, params, feature_map):
         if params == "samples_1":
-            solution = np.array([[1.0]])
+            return np.array([[1.0]])
 
         elif params == "samples_4" and feature_map == "z_fm":
-            solution = np.array(
+            return np.array(
                 [
                     [1.0, 0.78883982, 0.15984355, 0.06203766],
                     [0.78883982, 1.0, 0.49363215, 0.32128356],
@@ -238,7 +238,7 @@ class TestStatevectorKernel(QiskitMachineLearningTestCase):
             )
         else:
             # ZZFeatureMap with 4 params
-            solution = np.array(
+            return np.array(
                 [
                     [1.0, 0.81376617, 0.05102078, 0.06033439],
                     [0.81376617, 1.0, 0.14750292, 0.09980414],
@@ -246,7 +246,6 @@ class TestStatevectorKernel(QiskitMachineLearningTestCase):
                     [0.06033439, 0.09980414, 0.26196463, 1.0],
                 ]
             )
-        return solution
 
     def _get_asymmetric_solution(self, params_x, params_y, feature_map):
         if params_x == "wrong" or params_y == "wrong":
@@ -272,24 +271,22 @@ class TestStatevectorKernel(QiskitMachineLearningTestCase):
                         [0.10665779, 0.7650088],
                     ]
                 )
+        elif params_x == "samples_1" and params_y == "samples_4":
+            solution = np.array([[1.0, 0.81376617, 0.05102078, 0.06033439]])
+        elif params_x == "samples_1" and params_y == "samples_test":
+            solution = np.array([[0.24610242, 0.17510262]])
+        elif params_x == "samples_4" and params_y == "samples_1":
+            solution = np.array([[1.0, 0.81376617, 0.05102078, 0.06033439]]).T
         else:
-            # ZZFeatureMap
-            if params_x == "samples_1" and params_y == "samples_4":
-                solution = np.array([[1.0, 0.81376617, 0.05102078, 0.06033439]])
-            elif params_x == "samples_1" and params_y == "samples_test":
-                solution = np.array([[0.24610242, 0.17510262]])
-            elif params_x == "samples_4" and params_y == "samples_1":
-                solution = np.array([[1.0, 0.81376617, 0.05102078, 0.06033439]]).T
-            else:
-                # 4_param and 2_param
-                solution = np.array(
-                    [
-                        [0.24610242, 0.17510262],
-                        [0.36660828, 0.06476594],
-                        [0.13924611, 0.48450828],
-                        [0.24435258, 0.31099496],
-                    ]
-                )
+            # 4_param and 2_param
+            solution = np.array(
+                [
+                    [0.24610242, 0.17510262],
+                    [0.36660828, 0.06476594],
+                    [0.13924611, 0.48450828],
+                    [0.24435258, 0.31099496],
+                ]
+            )
         return solution
 
     def test_validate_input(self):

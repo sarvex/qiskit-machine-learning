@@ -95,9 +95,8 @@ class PegasosQSVC(ClassifierMixin, SerializableModelMixin):
         if precomputed:
             if quantum_kernel is not None:
                 raise ValueError("'quantum_kernel' has to be None to use a precomputed kernel")
-        else:
-            if quantum_kernel is None:
-                quantum_kernel = FidelityQuantumKernel()
+        elif quantum_kernel is None:
+            quantum_kernel = FidelityQuantumKernel()
 
         self._quantum_kernel = quantum_kernel
         self._precomputed = precomputed
@@ -285,12 +284,7 @@ class PegasosQSVC(ClassifierMixin, SerializableModelMixin):
         support_indices = list(self._alphas.keys())
 
         # for training
-        if training:
-            # support vectors
-            x_supp = X[support_indices]
-        # for prediction
-        else:
-            x_supp = self._x_train[support_indices]
+        x_supp = X[support_indices] if training else self._x_train[support_indices]
         if not self._precomputed:
             # evaluate kernel function only for the fixed datum and the support vectors
             kernel = self._quantum_kernel.evaluate(X[index], x_supp) + self._kernel_offset
@@ -301,10 +295,7 @@ class PegasosQSVC(ClassifierMixin, SerializableModelMixin):
         y = np.array(list(map(self._label_map.get, self._y_train[support_indices])))
         # weights for the support vectors
         alphas = np.array(list(self._alphas.values()))
-        # this value corresponds to a sum of kernel values weighted by their labels and alphas
-        value = np.sum(alphas * y * kernel)
-
-        return value
+        return np.sum(alphas * y * kernel)
 
     @property
     def quantum_kernel(self) -> BaseKernel:
@@ -348,13 +339,7 @@ class PegasosQSVC(ClassifierMixin, SerializableModelMixin):
         cleared. If ``False`` is passed then a new instance of
         :class:`~qiskit_machine_learning.kernels.FidelityQuantumKernel` is created."""
         self._precomputed = precomputed
-        if precomputed:
-            # remove the kernel, a precomputed will
-            self._quantum_kernel = None
-        else:
-            # re-create a new default quantum kernel
-            self._quantum_kernel = FidelityQuantumKernel()
-
+        self._quantum_kernel = None if precomputed else FidelityQuantumKernel()
         # reset training status
         self._reset_state()
 

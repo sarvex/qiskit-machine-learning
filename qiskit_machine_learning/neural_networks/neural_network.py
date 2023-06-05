@@ -160,12 +160,10 @@ class NeuralNetwork(ABC):
             else:
                 parameters = input_data
         else:
+            num_samples = 1
             if weights is not None:
-                num_samples = 1
                 parameters = np.broadcast_to(weights, (num_samples, len(weights)))
             else:
-                # no input, no weights, just execute circuit once
-                num_samples = 1
                 parameters = np.asarray([])
         return parameters, num_samples
 

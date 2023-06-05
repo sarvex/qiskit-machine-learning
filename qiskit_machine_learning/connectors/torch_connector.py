@@ -101,18 +101,17 @@ class TorchConnector(Module):
                 input_data.detach().cpu().numpy(), weights.detach().cpu().numpy()
             )
             if ctx.sparse:
-                if neural_network.sparse:
-                    _optionals.HAS_SPARSE.require_now("SparseArray")
-                    # pylint: disable=import-error
-                    from sparse import SparseArray, COO
-
-                    # todo: replace output type from DOK to COO?
-                    result = cast(COO, cast(SparseArray, result).asformat("coo"))
-                    result_tensor = torch.sparse_coo_tensor(result.coords, result.data)
-                else:
+                if not neural_network.sparse:
                     raise RuntimeError(
                         "TorchConnector configured as sparse, the network must be sparse as well"
                     )
+                _optionals.HAS_SPARSE.require_now("SparseArray")
+                # pylint: disable=import-error
+                from sparse import SparseArray, COO
+
+                # todo: replace output type from DOK to COO?
+                result = cast(COO, cast(SparseArray, result).asformat("coo"))
+                result_tensor = torch.sparse_coo_tensor(result.coords, result.data)
             else:
                 # connector is dense
                 if neural_network.sparse:
@@ -137,7 +136,7 @@ class TorchConnector(Module):
             return result_tensor
 
         @staticmethod
-        def backward(ctx: Any, grad_output: Tensor) -> Tuple:  # type: ignore
+        def backward(ctx: Any, grad_output: Tensor) -> Tuple:    # type: ignore
             """Backward pass computation.
             Args:
                 ctx: context
@@ -171,32 +170,31 @@ class TorchConnector(Module):
             )
             if input_grad is not None:
                 if ctx.sparse:
-                    if neural_network.sparse:
-                        _optionals.HAS_SPARSE.require_now("Sparse")
-                        import sparse
-                        from sparse import COO
-
-                        grad_output = grad_output.detach().cpu()
-                        grad_coo = COO(grad_output.indices(), grad_output.values())
-
-                        # Takes gradients from previous layer in backward pass (i.e. later layer in
-                        # forward pass) j for each observation i in the batch. Multiplies this with
-                        # the gradient from this point on backwards with respect to each input k.
-                        # Sums over all j to get total gradient of output w.r.t. each input k and
-                        # batch index i. This operation should preserve the batch dimension to be
-                        # able to do back-prop in a batched manner.
-                        # Pytorch does not support sparse einsum, so we rely on Sparse.
-                        # pylint: disable=no-member
-                        input_grad = sparse.einsum("ij,ijk->ik", grad_coo, input_grad)
-
-                        # return sparse gradients
-                        input_grad = torch.sparse_coo_tensor(input_grad.coords, input_grad.data)
-                    else:
+                    if not neural_network.sparse:
                         # this exception should never happen
                         raise RuntimeError(
                             "TorchConnector configured as sparse, "
                             "the network must be sparse as well"
                         )
+                    _optionals.HAS_SPARSE.require_now("Sparse")
+                    import sparse
+                    from sparse import COO
+
+                    grad_output = grad_output.detach().cpu()
+                    grad_coo = COO(grad_output.indices(), grad_output.values())
+
+                    # Takes gradients from previous layer in backward pass (i.e. later layer in
+                    # forward pass) j for each observation i in the batch. Multiplies this with
+                    # the gradient from this point on backwards with respect to each input k.
+                    # Sums over all j to get total gradient of output w.r.t. each input k and
+                    # batch index i. This operation should preserve the batch dimension to be
+                    # able to do back-prop in a batched manner.
+                    # Pytorch does not support sparse einsum, so we rely on Sparse.
+                    # pylint: disable=no-member
+                    input_grad = sparse.einsum("ij,ijk->ik", grad_coo, input_grad)
+
+                    # return sparse gradients
+                    input_grad = torch.sparse_coo_tensor(input_grad.coords, input_grad.data)
                 else:
                     # connector is dense
                     if neural_network.sparse:
@@ -212,32 +210,31 @@ class TorchConnector(Module):
 
             if weights_grad is not None:
                 if ctx.sparse:
-                    if neural_network.sparse:
-                        import sparse
-                        from sparse import COO
-
-                        grad_output = grad_output.detach().cpu()
-                        grad_coo = COO(grad_output.indices(), grad_output.values())
-
-                        # Takes gradients from previous layer in backward pass (i.e. later layer in
-                        # forward pass) j for each observation i in the batch. Multiplies this with
-                        # the gradient from this point on backwards with respect to each
-                        # parameter k. Sums over all i and j to get total gradient of output
-                        # w.r.t. each parameter k. The weights' dimension is independent of the
-                        # batch size.
-                        # pylint: disable=no-member
-                        weights_grad = sparse.einsum("ij,ijk->k", grad_coo, weights_grad)
-
-                        # return sparse gradients
-                        weights_grad = torch.sparse_coo_tensor(
-                            weights_grad.coords, weights_grad.data
-                        )
-                    else:
+                    if not neural_network.sparse:
                         # this exception should never happen
                         raise RuntimeError(
                             "TorchConnector configured as sparse, "
                             "the network must be sparse as well"
                         )
+                    import sparse
+                    from sparse import COO
+
+                    grad_output = grad_output.detach().cpu()
+                    grad_coo = COO(grad_output.indices(), grad_output.values())
+
+                    # Takes gradients from previous layer in backward pass (i.e. later layer in
+                    # forward pass) j for each observation i in the batch. Multiplies this with
+                    # the gradient from this point on backwards with respect to each
+                    # parameter k. Sums over all i and j to get total gradient of output
+                    # w.r.t. each parameter k. The weights' dimension is independent of the
+                    # batch size.
+                    # pylint: disable=no-member
+                    weights_grad = sparse.einsum("ij,ijk->k", grad_coo, weights_grad)
+
+                    # return sparse gradients
+                    weights_grad = torch.sparse_coo_tensor(
+                        weights_grad.coords, weights_grad.data
+                    )
                 else:
                     if neural_network.sparse:
                         # convert to dense

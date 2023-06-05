@@ -124,21 +124,19 @@ class OpflowQNN(NeuralNetwork):
         # if the operator is a composed one, then we only need to look at the first element of it.
         if isinstance(op, ComposedOp):
             return self._compute_output_shape(op.oplist[0].primitive)
-        # this "if" statement is on purpose, to prevent sub-classes.
-        # pylint:disable=unidiomatic-typecheck
-        if type(op) == ListOp:
-            shapes = [self._compute_output_shape(op_) for op_ in op.oplist]
-            if not np.all([shape == shapes[0] for shape in shapes]):
-                raise QiskitMachineLearningError(
-                    "Only supports ListOps with children that return the same shape."
-                )
-            if shapes[0] == (1,):
-                out = op.combo_fn(np.zeros((len(op.oplist))))
-            else:
-                out = op.combo_fn(np.zeros((len(op.oplist), *shapes[0])))
-            return out.shape
-        else:
+        if type(op) != ListOp:
             return (1,)
+        shapes = [self._compute_output_shape(op_) for op_ in op.oplist]
+        if not np.all([shape == shapes[0] for shape in shapes]):
+            raise QiskitMachineLearningError(
+                "Only supports ListOps with children that return the same shape."
+            )
+        out = (
+            op.combo_fn(np.zeros((len(op.oplist))))
+            if shapes[0] == (1,)
+            else op.combo_fn(np.zeros((len(op.oplist), *shapes[0])))
+        )
+        return out.shape
 
     @property
     def operator(self):
@@ -199,20 +197,18 @@ class OpflowQNN(NeuralNetwork):
     def _forward(
         self, input_data: Optional[np.ndarray], weights: Optional[np.ndarray]
     ) -> Union[np.ndarray, SparseArray]:
-        # combine parameter dictionary
-        # take i-th column as values for the i-th param in a batch
-        param_values = {p: input_data[:, i].tolist() for i, p in enumerate(self._input_params)}
-        param_values.update(
-            {p: [weights[i]] * input_data.shape[0] for i, p in enumerate(self._weight_params)}
-        )
-
+        param_values = {
+            p: input_data[:, i].tolist() for i, p in enumerate(self._input_params)
+        } | {
+            p: [weights[i]] * input_data.shape[0]
+            for i, p in enumerate(self._weight_params)
+        }
         # evaluate operator
         if self._circuit_sampler:
             op = self._circuit_sampler.convert(self._forward_operator, param_values)
-            result = np.real(op.eval())
         else:
             op = self._forward_operator.bind_parameters(param_values)
-            result = np.real(op.eval())
+        result = np.real(op.eval())
         result = np.array(result)
         return result.reshape(-1, *self._output_shape)
 
@@ -233,15 +229,12 @@ class OpflowQNN(NeuralNetwork):
             num_params = self._num_weights
 
         param_values = {
-            input_param: input_data[:, j] for j, input_param in enumerate(self._input_params)
+            input_param: input_data[:, j]
+            for j, input_param in enumerate(self._input_params)
+        } | {
+            weight_param: np.full(num_samples, weights[j])
+            for j, weight_param in enumerate(self._weight_params)
         }
-        param_values.update(
-            {
-                weight_param: np.full(num_samples, weights[j])
-                for j, weight_param in enumerate(self._weight_params)
-            }
-        )
-
         if self._circuit_sampler:
             converted_op = self._circuit_sampler.convert(self._gradient_operator, param_values)
             # if statement is a workaround for https://github.com/Qiskit/qiskit-terra/issues/7608
@@ -311,10 +304,8 @@ class OpflowQNN(NeuralNetwork):
             for i in range(num_samples)
         ]
 
-        grad = []
-        # iterate over gradient vectors and bind the correct parameters
-        for oper_i, param_i in zip(operator, param_bindings):
-            # bind or re-bind remaining values and evaluate the gradient
-            grad.append(oper_i.bind_parameters(param_i).eval())
-
+        grad = [
+            oper_i.bind_parameters(param_i).eval()
+            for oper_i, param_i in zip(operator, param_bindings)
+        ]
         return np.asarray(grad)

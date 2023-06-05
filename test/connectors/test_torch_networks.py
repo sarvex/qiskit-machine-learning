@@ -87,13 +87,11 @@ class TestTorchNetworks(TestTorch):
     def _create_opflow_qnn(self) -> TwoLayerQNN:
         num_inputs = 2
 
-        # set up QNN
-        qnn = TwoLayerQNN(
+        return TwoLayerQNN(
             num_qubits=num_inputs,
             quantum_instance=self._sv_quantum_instance,
             input_gradients=True,  # for hybrid qnn
         )
-        return qnn
 
     def _create_estimator_qnn(self) -> EstimatorQNN:
         num_inputs = 2
@@ -105,13 +103,12 @@ class TestTorchNetworks(TestTorch):
         qc.append(feature_map, range(num_inputs))
         qc.append(ansatz, range(num_inputs))
 
-        qnn = EstimatorQNN(
+        return EstimatorQNN(
             circuit=qc,
             input_params=feature_map.parameters,
             weight_params=ansatz.parameters,
             input_gradients=True,  # for hybrid qnn
         )
-        return qnn
 
     def _create_sampler_qnn(self) -> SamplerQNN:
         output_shape = 2

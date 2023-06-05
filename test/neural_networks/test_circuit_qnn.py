@@ -132,8 +132,7 @@ class TestCircuitQNN(QiskitMachineLearningTestCase):
             interpret = self.interpret_2d
             output_shape = self.output_shape_2d
 
-        # construct QNN
-        qnn = CircuitQNN(
+        return CircuitQNN(
             self.qc,
             self.input_params,
             self.weight_params,
@@ -143,7 +142,6 @@ class TestCircuitQNN(QiskitMachineLearningTestCase):
             output_shape=output_shape,
             quantum_instance=quantum_instance,
         )
-        return qnn
 
     def _verify_qnn(
         self,
@@ -263,13 +261,12 @@ class TestCircuitQNN(QiskitMachineLearningTestCase):
                     .reshape((batch_size, -1, qnn.num_inputs))[:, :, k]
                     .reshape(grad.shape)
                 )
-                diff = input_grad_ - grad
             else:
                 grad = (f_1 - f_2) / (2 * eps)
                 input_grad_ = input_grad.reshape((batch_size, -1, qnn.num_inputs))[:, :, k].reshape(
                     grad.shape
                 )
-                diff = input_grad_ - grad
+            diff = input_grad_ - grad
             self.assertAlmostEqual(np.max(np.abs(diff)), 0.0, places=3)
 
         # test weight gradients
@@ -287,13 +284,12 @@ class TestCircuitQNN(QiskitMachineLearningTestCase):
                     .reshape((batch_size, -1, qnn.num_weights))[:, :, k]
                     .reshape(grad.shape)
                 )
-                diff = weights_grad_ - grad
             else:
                 grad = (f_1 - f_2) / (2 * eps)
                 weights_grad_ = weights_grad.reshape((batch_size, -1, qnn.num_weights))[
                     :, :, k
                 ].reshape(grad.shape)
-                diff = weights_grad_ - grad
+            diff = weights_grad_ - grad
             self.assertAlmostEqual(np.max(np.abs(diff)), 0.0, places=3)
 
     @unittest.skipIf(not _optionals.HAS_SPARSE, "Sparse not available.")

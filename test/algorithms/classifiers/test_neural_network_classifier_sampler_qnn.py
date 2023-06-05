@@ -60,15 +60,13 @@ class TestNeuralNetworkClassifier(QiskitMachineLearningTestCase):
 
     def _create_optimizer(self, opt: str) -> Optimizer | None:
         if opt == "bfgs":
-            optimizer = L_BFGS_B(maxiter=5)
-        elif opt == "cobyla":
-            optimizer = COBYLA(maxiter=25)
+            return L_BFGS_B(maxiter=5)
         elif opt == "callable":
-            optimizer = partial(minimize, method="COBYLA", options={"maxiter": 25})
+            return partial(minimize, method="COBYLA", options={"maxiter": 25})
+        elif opt == "cobyla":
+            return COBYLA(maxiter=25)
         else:
-            optimizer = None
-
-        return optimizer
+            return None
 
     def _create_callback(self, cb_flag):
         if cb_flag:
@@ -177,8 +175,7 @@ class TestNeuralNetworkClassifier(QiskitMachineLearningTestCase):
     ):
         initial_point = np.array([0.5] * num_parameters)
 
-        # construct classifier
-        classifier = NeuralNetworkClassifier(
+        return NeuralNetworkClassifier(
             qnn,
             optimizer=optimizer,
             loss=loss,
@@ -186,7 +183,6 @@ class TestNeuralNetworkClassifier(QiskitMachineLearningTestCase):
             initial_point=initial_point,
             callback=callback,
         )
-        return classifier
 
     @idata(itertools.product(OPTIMIZERS, L1L2_ERRORS, CALLBACKS))
     @unpack

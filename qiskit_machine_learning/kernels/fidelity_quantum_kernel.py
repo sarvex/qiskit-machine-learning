@@ -215,11 +215,10 @@ class FidelityQuantumKernel(BaseKernel):
                 left_parameters,
                 right_parameters,
             )
-            kernel_entries = job.result().fidelities
+            return job.result().fidelities
         else:
             # trivial case, only identical samples
-            kernel_entries = []
-        return kernel_entries
+            return []
 
     def _is_trivial(
         self, i: int, j: int, x_i: np.ndarray, y_j: np.ndarray, symmetric: bool
@@ -246,11 +245,7 @@ class FidelityQuantumKernel(BaseKernel):
             return True
 
         # if don't evaluate any duplicates
-        if np.array_equal(x_i, y_j) and self._evaluate_duplicates == "none":
-            return True
-
-        # otherwise evaluate
-        return False
+        return bool(np.array_equal(x_i, y_j) and self._evaluate_duplicates == "none")
 
     @property
     def fidelity(self):

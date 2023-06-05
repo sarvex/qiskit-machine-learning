@@ -190,35 +190,35 @@ class CircuitQNN(SamplingNeuralNetwork):
                 )
 
             num_samples = self._quantum_instance.run_config.shots
-            if interpret is not None:
+            if interpret is None:
+                output_shape_ = (num_samples, 1)
+            else:
                 ret = interpret(0)  # infer shape from function
                 result = np.array(ret)
-                if len(result.shape) == 0:
-                    output_shape_ = (num_samples, 1)
-                else:
-                    output_shape_ = (num_samples, *result.shape)
+                output_shape_ = (
+                    (num_samples, 1)
+                    if len(result.shape) == 0
+                    else (num_samples, *result.shape)
+                )
+        elif interpret is not None:
+            if output_shape is None:
+                raise QiskitMachineLearningError(
+                    "No output shape given, but required in case of custom interpret!"
+                )
+            if isinstance(output_shape, Integral):
+                output_shape = int(output_shape)
+                output_shape_ = (output_shape,)
             else:
-                output_shape_ = (num_samples, 1)
+                output_shape_ = output_shape
         else:
-            if interpret is not None:
-                if output_shape is None:
-                    raise QiskitMachineLearningError(
-                        "No output shape given, but required in case of custom interpret!"
-                    )
-                if isinstance(output_shape, Integral):
-                    output_shape = int(output_shape)
-                    output_shape_ = (output_shape,)
-                else:
-                    output_shape_ = output_shape
-            else:
-                if output_shape is not None:
-                    # Warn user that output_shape parameter will be ignored
-                    logger.warning(
-                        "No interpret function given, output_shape will be automatically "
-                        "determined as 2^num_qubits."
-                    )
+            if output_shape is not None:
+                # Warn user that output_shape parameter will be ignored
+                logger.warning(
+                    "No interpret function given, output_shape will be automatically "
+                    "determined as 2^num_qubits."
+                )
 
-                output_shape_ = (2**self._circuit.num_qubits,)
+            output_shape_ = (2**self._circuit.num_qubits,)
 
         # final validation
         output_shape_ = self._validate_output_shape(output_shape_)
@@ -365,11 +365,12 @@ class CircuitQNN(SamplingNeuralNetwork):
         num_samples = input_data.shape[0]
         for i in range(num_samples):
             param_values = {
-                input_param: input_data[i, j] for j, input_param in enumerate(self._input_params)
+                input_param: input_data[i, j]
+                for j, input_param in enumerate(self._input_params)
+            } | {
+                weight_param: weights[j]
+                for j, weight_param in enumerate(self._weight_params)
             }
-            param_values.update(
-                {weight_param: weights[j] for j, weight_param in enumerate(self._weight_params)}
-            )
             circuits.append(self._circuit.bind_parameters(param_values))
 
         if self._quantum_instance.bound_pass_manager is not None:
@@ -400,11 +401,12 @@ class CircuitQNN(SamplingNeuralNetwork):
         num_samples = input_data.shape[0]
         for i in range(num_samples):
             param_values = {
-                input_param: input_data[i, j] for j, input_param in enumerate(self._input_params)
+                input_param: input_data[i, j]
+                for j, input_param in enumerate(self._input_params)
+            } | {
+                weight_param: weights[j]
+                for j, weight_param in enumerate(self._weight_params)
             }
-            param_values.update(
-                {weight_param: weights[j] for j, weight_param in enumerate(self._weight_params)}
-            )
             circuits.append(self._circuit.bind_parameters(param_values))
 
         if self._quantum_instance.bound_pass_manager is not None:
@@ -434,10 +436,7 @@ class CircuitQNN(SamplingNeuralNetwork):
                 key = (i, *key)  # type: ignore
                 prob[key] += v / shots
 
-        if self._sparse:
-            return prob.to_coo()
-        else:
-            return prob
+        return prob.to_coo() if self._sparse else prob
 
     def _probability_gradients(
         self, input_data: Optional[np.ndarray], weights: Optional[np.ndarray]
@@ -467,15 +466,12 @@ class CircuitQNN(SamplingNeuralNetwork):
             weights_grad = np.zeros((num_samples, *self._output_shape, self._num_weights))
 
         param_values = {
-            input_param: input_data[:, j] for j, input_param in enumerate(self._input_params)
+            input_param: input_data[:, j]
+            for j, input_param in enumerate(self._input_params)
+        } | {
+            weight_param: np.full(num_samples, weights[j])
+            for j, weight_param in enumerate(self._weight_params)
         }
-        param_values.update(
-            {
-                weight_param: np.full(num_samples, weights[j])
-                for j, weight_param in enumerate(self._weight_params)
-            }
-        )
-
         converted_op = self._sampler.convert(self._gradient_circuit, param_values)
         # if statement is a workaround for https://github.com/Qiskit/qiskit-terra/issues/7608
         if len(converted_op.parameters) > 0:
@@ -485,11 +481,10 @@ class CircuitQNN(SamplingNeuralNetwork):
                 for i in range(num_samples)
             ]
 
-            grad = []
-            # iterate over gradient vectors and bind the correct leftover parameters
-            for g_i, param_i in zip(converted_op, param_bindings):
-                # bind or re-bind remaining values and evaluate the gradient
-                grad.append(g_i.bind_parameters(param_i).eval())
+            grad = [
+                g_i.bind_parameters(param_i).eval()
+                for g_i, param_i in zip(converted_op, param_bindings)
+            ]
         else:
             grad = converted_op.eval()
 
@@ -520,12 +515,8 @@ class CircuitQNN(SamplingNeuralNetwork):
                         key = (sample, *key, grad_index)
 
                     # store value for inputs or weights gradients
-                    if self._input_gradients:
-                        # we compute input gradients first
-                        if i < self._num_inputs:
-                            input_grad[key] += np.real(val)
-                        else:
-                            weights_grad[key] += np.real(val)
+                    if self._input_gradients and i < self._num_inputs:
+                        input_grad[key] += np.real(val)
                     else:
                         weights_grad[key] += np.real(val)
         # end of for each sample

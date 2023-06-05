@@ -62,30 +62,28 @@ def derive_num_qubits_feature_map_ansatz(
         )
 
     if num_qubits not in (0, None):
-        if feature_map is not None:
-            if feature_map.num_qubits != num_qubits:
-                _adjust_num_qubits(feature_map, "feature map", num_qubits)
-        else:
+        if feature_map is None:
             feature_map = ZFeatureMap(num_qubits) if num_qubits == 1 else ZZFeatureMap(num_qubits)
-        if ansatz is not None:
-            if ansatz.num_qubits != num_qubits:
-                _adjust_num_qubits(ansatz, "ansatz", num_qubits)
-        else:
+        elif feature_map.num_qubits != num_qubits:
+            _adjust_num_qubits(feature_map, "feature map", num_qubits)
+        if ansatz is None:
             ansatz = RealAmplitudes(num_qubits)
+        elif ansatz.num_qubits != num_qubits:
+            _adjust_num_qubits(ansatz, "ansatz", num_qubits)
+    elif feature_map is not None and ansatz is not None:
+        if feature_map.num_qubits == ansatz.num_qubits:
+            num_qubits = feature_map.num_qubits
+        else:
+            raise QiskitMachineLearningError(
+                f"Mismatching number of qubits in the feature map ({feature_map.num_qubits}) "
+                f"and the ansatz ({ansatz.num_qubits})!"
+            )
+    elif feature_map is not None:
+        num_qubits = feature_map.num_qubits
+        ansatz = RealAmplitudes(num_qubits)
     else:
-        if feature_map is not None and ansatz is not None:
-            if feature_map.num_qubits != ansatz.num_qubits:
-                raise QiskitMachineLearningError(
-                    f"Mismatching number of qubits in the feature map ({feature_map.num_qubits}) "
-                    f"and the ansatz ({ansatz.num_qubits})!"
-                )
-            num_qubits = feature_map.num_qubits
-        elif feature_map is not None:
-            num_qubits = feature_map.num_qubits
-            ansatz = RealAmplitudes(num_qubits)
-        else:
-            num_qubits = ansatz.num_qubits
-            feature_map = ZFeatureMap(num_qubits) if num_qubits == 1 else ZZFeatureMap(num_qubits)
+        num_qubits = ansatz.num_qubits
+        feature_map = ZFeatureMap(num_qubits) if num_qubits == 1 else ZZFeatureMap(num_qubits)
 
     return num_qubits, feature_map, ansatz
 
