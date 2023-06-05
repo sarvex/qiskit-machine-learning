@@ -287,14 +287,12 @@ class TrainableModel(SerializableModelMixin):
         objective = self._get_objective(function)
 
         initial_point = self._choose_initial_point()
-        if callable(self._optimizer):
-            optimizer_result = self._optimizer(
-                fun=objective, x0=initial_point, jac=function.gradient
-            )
-        else:
-            optimizer_result = self._optimizer.minimize(
+        return (
+            self._optimizer(fun=objective, x0=initial_point, jac=function.gradient)
+            if callable(self._optimizer)
+            else self._optimizer.minimize(
                 fun=objective,
                 x0=initial_point,
                 jac=function.gradient,
             )
-        return optimizer_result
+        )

@@ -51,19 +51,7 @@ class TrainableKernel(BaseKernel, ABC):
         """
         Fix the training parameters to numerical values.
         """
-        if not isinstance(parameter_values, dict):
-            if len(parameter_values) != self._num_training_parameters:
-                raise ValueError(
-                    f"The number of given parameters is wrong: {len(parameter_values)}, "
-                    f"expected {self._num_training_parameters}."
-                )
-            self._parameter_dict.update(
-                {
-                    parameter: parameter_values[i]
-                    for i, parameter in enumerate(self._training_parameters)
-                }
-            )
-        else:
+        if isinstance(parameter_values, dict):
             for key in parameter_values:
                 if key not in self._training_parameters:
                     raise ValueError(
@@ -72,6 +60,19 @@ class TrainableKernel(BaseKernel, ABC):
                         "parameters when initializing the kernel."
                     )
                 self._parameter_dict[key] = parameter_values[key]
+
+        elif len(parameter_values) != self._num_training_parameters:
+            raise ValueError(
+                f"The number of given parameters is wrong: {len(parameter_values)}, "
+                f"expected {self._num_training_parameters}."
+            )
+        else:
+            self._parameter_dict.update(
+                {
+                    parameter: parameter_values[i]
+                    for i, parameter in enumerate(self._training_parameters)
+                }
+            )
 
     @property
     def parameter_values(self) -> np.ndarray:

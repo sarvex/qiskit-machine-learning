@@ -220,12 +220,9 @@ class QuantumKernel(TrainableKernel, BaseKernel):
                     """
                 )
 
-            # All input keys must exist in the circuit
-            # This check actually catches some well defined assignments;
-            # however; we throw an error to be consistent with the behavior
-            # of QuantumCircuit's parameter binding.
-            unknown_parameters = list(set(values.keys()) - set(self._training_parameters))
-            if len(unknown_parameters) > 0:
+            if unknown_parameters := list(
+                set(values.keys()) - set(self._training_parameters)
+            ):
                 raise ValueError(
                     f"Cannot bind parameters ({unknown_parameters}) not tracked by the quantum kernel."
                 )
@@ -298,16 +295,15 @@ class QuantumKernel(TrainableKernel, BaseKernel):
 
     def get_unbound_training_parameters(self) -> List[Parameter]:
         """Return a list of any unbound training parameters in the feature map circuit."""
-        unbound_training_params = []
-        if self._training_parameter_binds is not None:
-            # Get all training parameters not associated with numerical values
-            unbound_training_params = [
+        return (
+            [
                 val
                 for val in self._training_parameter_binds.values()
                 if not isinstance(val, numbers.Number)
             ]
-
-        return unbound_training_params
+            if self._training_parameter_binds is not None
+            else []
+        )
 
     def construct_circuit(
         self,
@@ -390,9 +386,7 @@ class QuantumKernel(TrainableKernel, BaseKernel):
         # |<0|Psi^dagger(y) x Psi(x)|0>|^2, take the amplitude
         v_a, v_b = results[idx1], results[idx2]
         tmp = np.vdot(v_a, v_b)
-        kernel_value = np.vdot(tmp, tmp).real  # pylint: disable=no-member
-
-        return kernel_value
+        return np.vdot(tmp, tmp).real
 
     def _compute_overlap(self, idx: int, results: Result) -> float:
         """
@@ -402,9 +396,7 @@ class QuantumKernel(TrainableKernel, BaseKernel):
         measurement_basis = "0" * self._feature_map.num_qubits
 
         result = results.get_counts(idx)
-        kernel_value = result.get(measurement_basis, 0) / sum(result.values())
-
-        return kernel_value
+        return result.get(measurement_basis, 0) / sum(result.values())
 
     def evaluate(self, x_vec: np.ndarray, y_vec: np.ndarray = None) -> np.ndarray:
         r"""
@@ -504,11 +496,7 @@ class QuantumKernel(TrainableKernel, BaseKernel):
         # get indices to calculate
         row_indices, col_indices = self._get_indices(x_vec, y_vec, is_symmetric)
 
-        if is_symmetric:
-            to_be_computed_data = x_vec
-        else:  # not symmetric
-            to_be_computed_data = np.concatenate((x_vec, y_vec))
-
+        to_be_computed_data = x_vec if is_symmetric else np.concatenate((x_vec, y_vec))
         feature_map_params = ParameterVector("par_x", self._feature_map.num_parameters)
         parameterized_circuit = self._construct_circuit_statevector(
             feature_map_params,
@@ -530,9 +518,9 @@ class QuantumKernel(TrainableKernel, BaseKernel):
                     circuits, pass_manager=self._quantum_instance.bound_pass_manager
                 )
             results = self._quantum_instance.execute(circuits, had_transpiled=True)
-            for j in range(max_idx - min_idx):
-                statevectors.append(results.get_statevector(j))
-
+            statevectors.extend(
+                results.get_statevector(j) for j in range(max_idx - min_idx)
+            )
         offset = 0 if is_symmetric else len(x_vec)
         for (i, j) in zip(row_indices, col_indices):
             x_i = x_vec[i]
@@ -632,9 +620,7 @@ class QuantumKernel(TrainableKernel, BaseKernel):
         return row_indices, col_indices
 
     def _check_training_parameters_bound(self) -> None:
-        # Ensure all training parameters have been bound in the feature map circuit.
-        unbound_params = self.get_unbound_training_parameters()
-        if unbound_params:
+        if unbound_params := self.get_unbound_training_parameters():
             raise ValueError(
                 f"""
                 The feature map circuit contains unbound training parameters ({unbound_params}).

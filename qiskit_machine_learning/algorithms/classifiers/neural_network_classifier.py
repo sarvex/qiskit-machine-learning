@@ -127,16 +127,16 @@ class NeuralNetworkClassifier(TrainableModel, ClassifierMixin):
         """
         # mypy definition
         function: ObjectiveFunction = None
-        if self._neural_network.output_shape == (1,):
-            self._validate_binary_targets(y)
-            function = BinaryObjectiveFunction(X, y, self._neural_network, self._loss)
-        else:
-            if self._one_hot:
-                function = OneHotObjectiveFunction(X, y, self._neural_network, self._loss)
-            else:
-                function = MultiClassObjectiveFunction(X, y, self._neural_network, self._loss)
-
-        return function
+        if self._neural_network.output_shape != (1,):
+            return (
+                OneHotObjectiveFunction(X, y, self._neural_network, self._loss)
+                if self._one_hot
+                else MultiClassObjectiveFunction(
+                    X, y, self._neural_network, self._loss
+                )
+            )
+        self._validate_binary_targets(y)
+        return BinaryObjectiveFunction(X, y, self._neural_network, self._loss)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         self._check_fitted()
@@ -291,11 +291,7 @@ class NeuralNetworkClassifier(TrainableModel, ClassifierMixin):
         Returns:
             The number of inferred classes.
         """
-        if self._one_hot:
-            num_classes = y.shape[-1]
-        else:
-            num_classes = len(np.unique(y))
-
+        num_classes = y.shape[-1] if self._one_hot else len(np.unique(y))
         if self._warm_start and self._num_classes is not None and self._num_classes != num_classes:
             raise QiskitMachineLearningError(
                 f"The number of classes ({num_classes}) is different to the previous batch "

@@ -152,15 +152,9 @@ class CrossEntropyLoss(Loss):
             predict = predict.reshape(1, -1)
             target = target.reshape(1, -1)
 
-        # multiply target and log(predict) matrices row by row and sum up each row
-        # into a single float, so the output is of shape(N,), where N number or samples.
-        # then reshape
-        # before taking the log we clip the predicted probabilities at a small positive number. This
-        # ensures that in cases where a class is predicted to have 0 probability we don't get `nan`.
-        val = -np.einsum(
+        return -np.einsum(
             "ij,ij->i", target, np.log2(np.clip(predict, a_min=1e-10, a_max=None))
         ).reshape(-1, 1)
-        return val
 
     def gradient(self, predict: np.ndarray, target: np.ndarray) -> np.ndarray:
         """Assume softmax is used, and target vector may or may not be one-hot encoding"""
@@ -170,8 +164,4 @@ class CrossEntropyLoss(Loss):
             predict = predict.reshape(1, -1)
             target = target.reshape(1, -1)
 
-        # sum up target along rows, then multiply predict by this sum element wise,
-        # then subtract target
-        grad = np.einsum("ij,i->ij", predict, np.sum(target, axis=1)) - target
-
-        return grad
+        return np.einsum("ij,i->ij", predict, np.sum(target, axis=1)) - target

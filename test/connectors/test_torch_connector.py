@@ -713,11 +713,7 @@ class TestTorchConnector(TestTorch):
     @unpack
     def test_sampler_qnn(self, num_qubits, sparse_connector, sparse_qnn, interpret):
         """Test TorchConnector on SamplerQNN."""
-        if interpret is not None:
-            output_shape = 2
-        else:
-            output_shape = None
-
+        output_shape = 2 if interpret is not None else None
         fmap = ZFeatureMap(num_qubits, reps=1)
         ansatz = RealAmplitudes(num_qubits, reps=1)
         qc = QuantumCircuit(num_qubits)

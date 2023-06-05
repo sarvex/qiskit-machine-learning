@@ -196,9 +196,8 @@ class TestVQC(QiskitMachineLearningTestCase):
 
         classifier._get_interpret = self._get_num_classes(classifier._get_interpret)
 
-        num_classes_list = []
         classifier.fit(x[:2, :], y_one_hot[:2])
-        num_classes_list.append(classifier.num_classes)
+        num_classes_list = [classifier.num_classes]
         classifier.fit(x[2:4, :], y_one_hot[2:4])
         num_classes_list.append(classifier.num_classes)
         classifier.fit(x[4:, :], y_one_hot[4:])

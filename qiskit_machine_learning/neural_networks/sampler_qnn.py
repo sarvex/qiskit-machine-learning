@@ -301,10 +301,7 @@ class SamplerQNN(NeuralNetwork):
                 key = (i, *key)  # type: ignore
                 prob[key] += v
 
-        if self._sparse:
-            return prob.to_coo()
-        else:
-            return prob
+        return prob.to_coo() if self._sparse else prob
 
     def _postprocess_gradient(
         self, num_samples: int, results: SamplerGradientResult
@@ -357,15 +354,10 @@ class SamplerQNN(NeuralNetwork):
                         key = (sample, *key, grad_index)
 
                     # store value for inputs or weights gradients
-                    if self._input_gradients:
-                        # we compute input gradients first
-                        if i < self._num_inputs:
-                            input_grad[key] += val
-                        else:
-                            weights_grad[key] += val
+                    if self._input_gradients and i < self._num_inputs:
+                        input_grad[key] += val
                     else:
                         weights_grad[key] += val
-
         if self._sparse:
             if self._input_gradients:
                 input_grad = input_grad.to_coo()  # pylint: disable=no-member

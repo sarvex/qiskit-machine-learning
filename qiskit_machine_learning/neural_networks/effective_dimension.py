@@ -208,10 +208,7 @@ class EffectiveDimension:
         # after Einstein summation
         gradvectors = np.sqrt(model_outputs) * gradients / model_outputs
 
-        # compute the sum of matrices obtained from outer product of grad-vectors
-        fisher_information = np.einsum("ijk,lji->ikl", gradvectors, gradvectors.T)
-
-        return fisher_information
+        return np.einsum("ijk,lji->ikl", gradvectors, gradvectors.T)
 
     def get_normalized_fisher(self, normalized_fisher: np.ndarray) -> Tuple[np.ndarray, float]:
         """
@@ -303,10 +300,7 @@ class EffectiveDimension:
         # step 3: get normalized fisher info matrices
         normalized_fisher, _ = self.get_normalized_fisher(fisher)
 
-        # step 4: compute eff. dim
-        effective_dimensions = self._get_effective_dimension(normalized_fisher, dataset_size)
-
-        return effective_dimensions
+        return self._get_effective_dimension(normalized_fisher, dataset_size)
 
 
 class LocalEffectiveDimension(EffectiveDimension):

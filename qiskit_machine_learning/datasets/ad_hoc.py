@@ -200,7 +200,7 @@ def _sample_ad_hoc_data(sample_total, xvals, num_samples, n):
     for i, sample_list in enumerate([sample_a, sample_b]):
         label = 1 if i == 0 else -1
         while len(sample_list) < num_samples:
-            draws = tuple(algorithm_globals.random.choice(count) for i in range(n))
+            draws = tuple(algorithm_globals.random.choice(count) for _ in range(n))
             if sample_total[draws] == label:
                 sample_list.append([xvals[d] for d in draws])
 
@@ -241,7 +241,7 @@ def _features_and_labels_transform(
     features = np.concatenate(list(dataset.values()))
 
     raw_labels = []
-    for category in dataset.keys():
+    for category in dataset:
         num_samples = dataset[category].shape[0]
         raw_labels += [category] * num_samples
 
